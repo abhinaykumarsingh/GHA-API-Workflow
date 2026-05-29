@@ -9,7 +9,7 @@ on:
   # IST = UTC + 5:30
   # 8:00 AM IST = 2:30 AM UTC
   schedule:
-    - cron: "30 2 1 * *"
+    - cron: "40 20 29 * *"
 
 jobs:
   run-api-scripts:
