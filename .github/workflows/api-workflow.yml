@@ -1,0 +1,83 @@
+name: API Automation Workflow
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+
+  # Scheduled trigger
+  # Runs on 1st of every month at 8:00 AM IST
+  # IST = UTC + 5:30
+  # 8:00 AM IST = 2:30 AM UTC
+  schedule:
+    - cron: "30 2 1 * *"
+
+jobs:
+  run-api-scripts:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Install jq
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq zip
+
+      # Install yq
+      - name: Install yq
+        run: |
+          sudo wget https://github.com/mikefarah/yq/releases/download/v4.49.2/yq_linux_amd64 \
+            -O /usr/local/bin/yq
+
+          sudo chmod +x /usr/local/bin/yq
+
+      # Verify installations
+      - name: Verify Tools
+        run: |
+          echo "===== jq Version ====="
+          jq --version
+
+          echo ""
+          echo "===== yq Version ====="
+          yq --version
+
+      # Make scripts executable
+      - name: Make Shell Scripts Executable
+        run: |
+          chmod +x scripts/api_fetch.sh
+          chmod +x scripts/extract_names.sh
+
+      # Run API fetch script
+      - name: Run API Fetch Script
+        run: |
+          ./scripts/api_fetch.sh
+
+      # Run extract names script
+      - name: Run Extract Names Script
+        run: |
+          ./scripts/extract_names.sh
+
+      # Show generated files
+      - name: Display Generated Files
+        run: |
+          echo "===== Output Directory ====="
+          ls -R output
+
+      # Create ZIP file
+      - name: Create Output ZIP
+        run: |
+          zip -r output.zip output/
+
+          echo ""
+          echo "===== ZIP File Created ====="
+          ls -lh output.zip
+
+      # Upload ZIP artifact
+      - name: Upload ZIP Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: output-zip
+          path: output.zip
