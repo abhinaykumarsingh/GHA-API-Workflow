@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
 
   # Scheduled trigger
-  # Runs on 1st of every month at 8:00 AM IST
+  # Runs on 30th of every month at 2:10 AM IST
   # IST = UTC + 5:30
-  # 8:00 AM IST = 2:30 AM UTC
+  # 2:10 AM IST = 20:40 UTC on the previous day
   schedule:
     - cron: "40 20 29 * *"
 
@@ -20,29 +20,70 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Install jq
-      - name: Install jq
+      # Create log directory
+      - name: Create Logs Directory
         run: |
-          sudo apt-get update
-          sudo apt-get install -y jq zip
+          mkdir -p logs
+
+      # Capture workflow metadata
+      - name: Capture Workflow Metadata
+        run: |
+          {
+            echo "======================================"
+            echo "Workflow Metadata"
+            echo "======================================"
+            echo "Workflow Name : $GITHUB_WORKFLOW"
+            echo "Run ID        : $GITHUB_RUN_ID"
+            echo "Run Number    : $GITHUB_RUN_NUMBER"
+            echo "Repository    : $GITHUB_REPOSITORY"
+            echo "Branch        : $GITHUB_REF_NAME"
+            echo "Triggered By  : $GITHUB_ACTOR"
+            echo "Date (UTC)    : $(date -u)"
+            echo "======================================"
+          } > logs/workflow_info.log
+
+      # Install dependencies
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update 2>&1 | tee logs/apt_update.log
+
+          sudo apt-get install -y \
+            jq \
+            zip \
+            moreutils \
+            2>&1 | tee logs/dependency_install.log
 
       # Install yq
       - name: Install yq
         run: |
-          sudo wget https://github.com/mikefarah/yq/releases/download/v4.49.2/yq_linux_amd64 \
-            -O /usr/local/bin/yq
+          wget \
+            https://github.com/mikefarah/yq/releases/download/v4.49.2/yq_linux_amd64 \
+            -O yq_linux_amd64 2>&1 | tee logs/yq_install.log
 
+          sudo mv yq_linux_amd64 /usr/local/bin/yq
           sudo chmod +x /usr/local/bin/yq
 
-      # Verify installations
+          yq --version >> logs/yq_install.log
+
+      # Verify tools
       - name: Verify Tools
         run: |
-          echo "===== jq Version ====="
-          jq --version
+          {
+            echo "===== jq ====="
+            jq --version
 
-          echo ""
-          echo "===== yq Version ====="
-          yq --version
+            echo ""
+            echo "===== yq ====="
+            yq --version
+
+            echo ""
+            echo "===== sponge ====="
+            which sponge
+
+            echo ""
+            echo "===== zip ====="
+            zip -v | head -n 3
+          } | tee logs/tool_verification.log
 
       # Make scripts executable
       - name: Make Shell Scripts Executable
@@ -53,27 +94,53 @@ jobs:
       # Run API fetch script
       - name: Run API Fetch Script
         run: |
-          ./scripts/api_fetch.sh
+          echo "::group::API Fetch Script"
+
+          ./scripts/api_fetch.sh 2>&1 | tee logs/api_fetch.log
+
+          echo "::endgroup::"
 
       # Run extract names script
       - name: Run Extract Names Script
         run: |
-          ./scripts/extract_names.sh
+          echo "::group::Extract Names Script"
 
-      # Show generated files
+          ./scripts/extract_names.sh 2>&1 | tee logs/extract_names.log
+
+          echo "::endgroup::"
+
+      # Capture output directory listing
       - name: Display Generated Files
         run: |
-          echo "===== Output Directory ====="
-          ls -R output
+          {
+            echo "===== Output Directory ====="
+            ls -R output
+
+            echo ""
+            echo "===== File Sizes ====="
+            du -sh output/*
+          } | tee logs/output_listing.log
+
+      # Create consolidated execution log
+      - name: Create Master Log
+        run: |
+          cat \
+            logs/workflow_info.log \
+            logs/tool_verification.log \
+            logs/api_fetch.log \
+            logs/extract_names.log \
+            logs/output_listing.log \
+            > logs/full_execution.log
 
       # Create ZIP file
       - name: Create Output ZIP
         run: |
-          zip -r output.zip output/
+          zip -r output.zip output/ logs/
 
           echo ""
           echo "===== ZIP File Created ====="
-          ls -lh output.zip
+
+          ls -lh output.zip | tee logs/zip_creation.log
 
       # Upload ZIP artifact
       - name: Upload ZIP Artifact
@@ -81,3 +148,10 @@ jobs:
         with:
           name: output-zip
           path: output.zip
+
+      # Upload logs separately for convenience
+      - name: Upload Logs Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: workflow-logs
+          path: logs/

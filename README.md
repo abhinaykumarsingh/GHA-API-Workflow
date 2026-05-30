@@ -6,9 +6,11 @@ A GitHub Actions automation project that:
 - Processes JSON using `jq`
 - Converts JSON to YAML using `yq`
 - Extracts user names from YAML and generates a JSON file
-- Packages all generated files into a ZIP archive
+- Uses `moreutils` (`sponge`) for future extensibility
+- Captures detailed execution logs
+- Packages generated files and logs into a ZIP archive
 - Uploads the ZIP as a GitHub Actions artifact
-- Optionally uploads the ZIP to Amazon S3
+- Uploads workflow logs as a separate artifact
 - Supports both manual and scheduled execution
 
 ---
@@ -50,6 +52,8 @@ output/
 └── users.yaml
 ```
 
+---
+
 ### Script 2: extract_names.sh
 
 Reads:
@@ -79,13 +83,75 @@ output/
 └── user_names.json
 ```
 
+---
+
+## Workflow Logging
+
+The workflow captures detailed execution logs during runtime.
+
+Generated logs:
+
+```text
+logs/
+├── workflow_info.log
+├── apt_update.log
+├── dependency_install.log
+├── yq_install.log
+├── tool_verification.log
+├── api_fetch.log
+├── extract_names.log
+├── output_listing.log
+├── zip_creation.log
+└── full_execution.log
+```
+
+### Log Contents
+
+| Log File               | Description                   |
+| ---------------------- | ----------------------------- |
+| workflow_info.log      | Workflow metadata             |
+| apt_update.log         | apt update output             |
+| dependency_install.log | Package installation logs     |
+| yq_install.log         | yq installation logs          |
+| tool_verification.log  | Installed tool versions       |
+| api_fetch.log          | API fetch script output       |
+| extract_names.log      | Name extraction script output |
+| output_listing.log     | Output directory details      |
+| zip_creation.log       | ZIP creation logs             |
+| full_execution.log     | Consolidated execution log    |
+
+---
+
+## ZIP Package Contents
+
 The workflow creates:
 
 ```text
 output.zip
 ```
 
-containing all generated files.
+Containing:
+
+```text
+output.zip
+├── output/
+│   ├── users.json
+│   ├── users_pretty.json
+│   ├── users_summary.json
+│   ├── users.yaml
+│   └── user_names.json
+└── logs/
+    ├── workflow_info.log
+    ├── apt_update.log
+    ├── dependency_install.log
+    ├── yq_install.log
+    ├── tool_verification.log
+    ├── api_fetch.log
+    ├── extract_names.log
+    ├── output_listing.log
+    ├── zip_creation.log
+    └── full_execution.log
+```
 
 ---
 
@@ -102,6 +168,8 @@ GitHub Repository
 → Run Workflow
 ```
 
+---
+
 ### Scheduled Execution
 
 Runs automatically every month:
@@ -117,7 +185,7 @@ Cron expression:
 cron: "40 20 29 * *"
 ```
 
-GitHub Actions uses UTC.
+GitHub Actions schedules are executed in UTC.
 
 ---
 
@@ -129,6 +197,8 @@ Installed automatically during workflow execution:
 - jq
 - yq (Mike Farah v4.x)
 - zip
+- moreutils
+  - sponge
 
 No local installation is required for GitHub Actions execution.
 
@@ -164,13 +234,16 @@ After workflow completion:
 
 1. Open GitHub Actions
 2. Select workflow run
-3. Download artifact:
+
+Artifacts available:
+
+### Output Package
 
 ```text
 output-zip
 ```
 
-Artifact contains:
+Contains:
 
 ```text
 output.zip
@@ -178,24 +251,49 @@ output.zip
 
 ---
 
-## Optional Amazon S3 Upload
-
-The workflow can upload the generated ZIP file to Amazon S3.
-
-Required GitHub Secrets:
-
-| Secret Name           | Description      |
-| --------------------- | ---------------- |
-| AWS_ACCESS_KEY_ID     | AWS Access Key   |
-| AWS_SECRET_ACCESS_KEY | AWS Secret Key   |
-| AWS_REGION            | AWS Region       |
-| S3_BUCKET_NAME        | Target S3 Bucket |
-
-Example upload result:
+### Workflow Logs
 
 ```text
-s3://my-bucket/output_2026-05-30_02-10-01.zip
+workflow-logs
 ```
+
+Contains:
+
+```text
+logs/
+```
+
+with all execution logs.
+
+---
+
+## Viewing Execution Logs
+
+GitHub Actions logs can be viewed directly in:
+
+```text
+Repository
+→ Actions
+→ Workflow Run
+→ Job Details
+```
+
+The workflow also stores the same information in downloadable log files.
+
+---
+
+## Future Enhancements
+
+Potential additions:
+
+- Amazon S3 Upload
+- Email Notifications
+- Slack Notifications
+- Microsoft Teams Notifications
+- Versioned Releases
+- Automated Cleanup of Old Artifacts
+- Multi-Environment Support
+- API Health Monitoring
 
 ---
 
@@ -206,8 +304,9 @@ s3://my-bucket/output_2026-05-30_02-10-01.zip
 - curl
 - jq
 - yq
+- moreutils
+- sponge
 - ZIP
-- Amazon S3
 
 ---
 
