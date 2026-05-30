@@ -6,16 +6,15 @@ A GitHub Actions automation project that:
 - Processes JSON using `jq`
 - Converts JSON to YAML using `yq`
 - Extracts user names from YAML and generates a JSON file
-- Uses `moreutils` (`sponge`) for future extensibility
-- Captures detailed execution logs
-- Packages generated files and logs into a ZIP archive
-- Uploads the ZIP as a GitHub Actions artifact
-- Uploads workflow logs as a separate artifact
+- Installs and verifies required dependencies automatically
+- Includes `moreutils` (`sponge`) for future enhancements
+- Captures detailed workflow execution logs
+- Uploads generated outputs and logs as a GitHub Actions artifact
 - Supports both manual and scheduled execution
 
 ---
 
-## Project Structure
+# Project Structure
 
 ```text
 project/
@@ -30,19 +29,19 @@ project/
 
 ---
 
-## Workflow Overview
+# Workflow Overview
 
-### Script 1: api_fetch.sh
+## Script 1: api_fetch.sh
 
-Performs the following tasks:
+This script:
 
-1. Calls the public API:
+1. Calls the public REST API:
 
 ```text
 https://jsonplaceholder.typicode.com/users
 ```
 
-2. Generates:
+2. Generates the following files:
 
 ```text
 output/
@@ -54,15 +53,19 @@ output/
 
 ---
 
-### Script 2: extract_names.sh
+## Script 2: extract_names.sh
 
-Reads:
+This script:
+
+1. Reads:
 
 ```text
 output/users.yaml
 ```
 
-Extracts all user names and generates:
+2. Extracts all user names
+
+3. Generates:
 
 ```text
 output/user_names.json
@@ -70,9 +73,9 @@ output/user_names.json
 
 ---
 
-## Generated Output
+# Generated Output
 
-Final output directory:
+After successful execution:
 
 ```text
 output/
@@ -85,11 +88,11 @@ output/
 
 ---
 
-## Workflow Logging
+# Workflow Logging
 
-The workflow captures detailed execution logs during runtime.
+The workflow automatically captures detailed logs for troubleshooting and auditing.
 
-Generated logs:
+Generated log files:
 
 ```text
 logs/
@@ -101,39 +104,129 @@ logs/
 ├── api_fetch.log
 ├── extract_names.log
 ├── output_listing.log
-├── zip_creation.log
 └── full_execution.log
 ```
 
-### Log Contents
+---
 
-| Log File               | Description                   |
-| ---------------------- | ----------------------------- |
-| workflow_info.log      | Workflow metadata             |
-| apt_update.log         | apt update output             |
-| dependency_install.log | Package installation logs     |
-| yq_install.log         | yq installation logs          |
-| tool_verification.log  | Installed tool versions       |
-| api_fetch.log          | API fetch script output       |
-| extract_names.log      | Name extraction script output |
-| output_listing.log     | Output directory details      |
-| zip_creation.log       | ZIP creation logs             |
-| full_execution.log     | Consolidated execution log    |
+## Log File Details
+
+| Log File               | Description                             |
+| ---------------------- | --------------------------------------- |
+| workflow_info.log      | Workflow metadata and execution details |
+| apt_update.log         | apt package update output               |
+| dependency_install.log | Dependency installation logs            |
+| yq_install.log         | yq installation logs                    |
+| tool_verification.log  | Installed tool versions                 |
+| api_fetch.log          | API fetch script output                 |
+| extract_names.log      | User name extraction script output      |
+| output_listing.log     | Generated file listing                  |
+| full_execution.log     | Consolidated workflow execution log     |
 
 ---
 
-## ZIP Package Contents
+# GitHub Actions Triggers
 
-The workflow creates:
+## Manual Execution
+
+Run manually from:
 
 ```text
-output.zip
+Repository
+→ Actions
+→ API Automation Workflow
+→ Run Workflow
 ```
 
-Containing:
+---
+
+## Scheduled Execution
+
+Automatically runs every month:
 
 ```text
-output.zip
+30th Day
+02:10 AM IST
+```
+
+GitHub Actions cron schedule:
+
+```yaml
+cron: "40 20 29 * *"
+```
+
+### Time Conversion
+
+| Timezone | Execution Time |
+| -------- | -------------- |
+| UTC      | 20:40 on 29th  |
+| IST      | 02:10 on 30th  |
+
+> Note: GitHub Actions scheduled workflows may occasionally start a few minutes later than the scheduled time.
+
+---
+
+# Dependencies
+
+Installed automatically during workflow execution:
+
+| Package   | Purpose                     |
+| --------- | --------------------------- |
+| curl      | API calls                   |
+| jq        | JSON processing             |
+| yq        | YAML processing             |
+| zip       | Compression utilities       |
+| moreutils | Additional Unix utilities   |
+| sponge    | Safe file overwrite utility |
+
+No manual installation is required when running through GitHub Actions.
+
+---
+
+# Running Locally
+
+## Make Scripts Executable
+
+```bash
+chmod +x scripts/api_fetch.sh
+chmod +x scripts/extract_names.sh
+```
+
+## Execute Scripts
+
+```bash
+./scripts/api_fetch.sh
+./scripts/extract_names.sh
+```
+
+Generated files will be created in:
+
+```text
+output/
+```
+
+---
+
+# GitHub Actions Artifact
+
+After workflow completion:
+
+1. Open GitHub Actions
+2. Select the workflow run
+3. Download artifact:
+
+```text
+api-workflow-output
+```
+
+---
+
+# Artifact Contents
+
+After downloading and extracting the artifact:
+
+```text
+api-workflow-output/
 ├── output/
 │   ├── users.json
 │   ├── users_pretty.json
@@ -149,127 +242,14 @@ output.zip
     ├── api_fetch.log
     ├── extract_names.log
     ├── output_listing.log
-    ├── zip_creation.log
     └── full_execution.log
 ```
 
 ---
 
-## GitHub Actions Triggers
+# Viewing Workflow Logs
 
-### Manual Execution
-
-Run manually from:
-
-```text
-GitHub Repository
-→ Actions
-→ API Automation Workflow
-→ Run Workflow
-```
-
----
-
-### Scheduled Execution
-
-Runs automatically every month:
-
-```text
-30th Day
-02:10 AM IST
-```
-
-Cron expression:
-
-```yaml
-cron: "40 20 29 * *"
-```
-
-GitHub Actions schedules are executed in UTC.
-
----
-
-## Dependencies
-
-Installed automatically during workflow execution:
-
-- curl
-- jq
-- yq (Mike Farah v4.x)
-- zip
-- moreutils
-  - sponge
-
-No local installation is required for GitHub Actions execution.
-
----
-
-## Running Locally
-
-Make scripts executable:
-
-```bash
-chmod +x scripts/api_fetch.sh
-chmod +x scripts/extract_names.sh
-```
-
-Run:
-
-```bash
-./scripts/api_fetch.sh
-./scripts/extract_names.sh
-```
-
-Generated files will be created inside:
-
-```text
-output/
-```
-
----
-
-## GitHub Actions Artifacts
-
-After workflow completion:
-
-1. Open GitHub Actions
-2. Select workflow run
-
-Artifacts available:
-
-### Output Package
-
-```text
-output-zip
-```
-
-Contains:
-
-```text
-output.zip
-```
-
----
-
-### Workflow Logs
-
-```text
-workflow-logs
-```
-
-Contains:
-
-```text
-logs/
-```
-
-with all execution logs.
-
----
-
-## Viewing Execution Logs
-
-GitHub Actions logs can be viewed directly in:
+Logs can be viewed directly in GitHub:
 
 ```text
 Repository
@@ -278,26 +258,46 @@ Repository
 → Job Details
 ```
 
-The workflow also stores the same information in downloadable log files.
+The same information is also available in the downloaded log files.
 
 ---
 
-## Future Enhancements
+# Tool Verification
 
-Potential additions:
+The workflow verifies installed tools during execution:
+
+```bash
+jq --version
+yq --version
+which sponge
+zip -v
+```
+
+Verification results are stored in:
+
+```text
+logs/tool_verification.log
+```
+
+---
+
+# Future Enhancements
+
+Potential improvements:
 
 - Amazon S3 Upload
 - Email Notifications
 - Slack Notifications
 - Microsoft Teams Notifications
-- Versioned Releases
-- Automated Cleanup of Old Artifacts
-- Multi-Environment Support
+- Release Packaging
+- Artifact Retention Policies
+- Multi-Environment Deployments
 - API Health Monitoring
+- Automated Reporting
 
 ---
 
-## Tools Used
+# Tools Used
 
 - GitHub Actions
 - Bash
@@ -310,6 +310,6 @@ Potential additions:
 
 ---
 
-## Author
+# Author
 
-Abhinay Kumar Singh
+**Abhinay Kumar Singh**
