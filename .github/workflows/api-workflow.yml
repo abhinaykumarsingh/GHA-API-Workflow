@@ -1,13 +1,12 @@
 name: API Automation Workflow
 
 on:
-  # Manual trigger
+  # Allows manual execution from the Actions tab
   workflow_dispatch:
 
-  # Scheduled trigger
-  # Runs on 30th of every month at 2:10 AM IST
-  # IST = UTC + 5:30
-  # 2:10 AM IST = 20:40 UTC on the previous day
+  # Runs automatically on the 30th of every month at 2:10 AM IST
+  # GitHub Actions uses UTC
+  # 02:10 IST = 20:40 UTC on the previous day
   schedule:
     - cron: "40 20 29 * *"
 
@@ -16,16 +15,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout repository
+      # Step 1: Download repository contents onto the runner
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Create log directory
+      # Step 2: Create directory to store workflow logs
       - name: Create Logs Directory
         run: |
           mkdir -p logs
 
-      # Capture workflow metadata
+      # Step 3: Capture workflow execution metadata
       - name: Capture Workflow Metadata
         run: |
           {
@@ -38,11 +37,11 @@ jobs:
             echo "Repository    : $GITHUB_REPOSITORY"
             echo "Branch        : $GITHUB_REF_NAME"
             echo "Triggered By  : $GITHUB_ACTOR"
-            echo "Date (UTC)    : $(date -u)"
+            echo "Execution UTC : $(date -u)"
             echo "======================================"
           } > logs/workflow_info.log
 
-      # Install dependencies
+      # Step 4: Install required packages
       - name: Install Dependencies
         run: |
           sudo apt-get update 2>&1 | tee logs/apt_update.log
@@ -53,19 +52,20 @@ jobs:
             moreutils \
             2>&1 | tee logs/dependency_install.log
 
-      # Install yq
+      # Step 5: Install yq
       - name: Install yq
         run: |
           wget \
             https://github.com/mikefarah/yq/releases/download/v4.49.2/yq_linux_amd64 \
-            -O yq_linux_amd64 2>&1 | tee logs/yq_install.log
+            -O yq_linux_amd64 \
+            2>&1 | tee logs/yq_install.log
 
           sudo mv yq_linux_amd64 /usr/local/bin/yq
           sudo chmod +x /usr/local/bin/yq
 
           yq --version >> logs/yq_install.log
 
-      # Verify tools
+      # Step 6: Verify all required tools
       - name: Verify Tools
         run: |
           {
@@ -85,31 +85,23 @@ jobs:
             zip -v | head -n 3
           } | tee logs/tool_verification.log
 
-      # Make scripts executable
+      # Step 7: Make shell scripts executable
       - name: Make Shell Scripts Executable
         run: |
           chmod +x scripts/api_fetch.sh
           chmod +x scripts/extract_names.sh
 
-      # Run API fetch script
+      # Step 8: Fetch API data and generate JSON/YAML files
       - name: Run API Fetch Script
         run: |
-          echo "::group::API Fetch Script"
-
           ./scripts/api_fetch.sh 2>&1 | tee logs/api_fetch.log
 
-          echo "::endgroup::"
-
-      # Run extract names script
+      # Step 9: Read YAML and extract user names
       - name: Run Extract Names Script
         run: |
-          echo "::group::Extract Names Script"
-
           ./scripts/extract_names.sh 2>&1 | tee logs/extract_names.log
 
-          echo "::endgroup::"
-
-      # Capture output directory listing
+      # Step 10: Display generated output files
       - name: Display Generated Files
         run: |
           {
@@ -121,7 +113,7 @@ jobs:
             du -sh output/*
           } | tee logs/output_listing.log
 
-      # Create consolidated execution log
+      # Step 11: Create one consolidated log file
       - name: Create Master Log
         run: |
           cat \
@@ -132,26 +124,13 @@ jobs:
             logs/output_listing.log \
             > logs/full_execution.log
 
-      # Create ZIP file
-      - name: Create Output ZIP
-        run: |
-          zip -r output.zip output/ logs/
-
-          echo ""
-          echo "===== ZIP File Created ====="
-
-          ls -lh output.zip | tee logs/zip_creation.log
-
-      # Upload ZIP artifact
-      - name: Upload ZIP Artifact
+      # Step 12: Upload output and logs as a single GitHub artifact
+      # GitHub automatically compresses these folders.
+      # No nested ZIP files will be created.
+      - name: Upload Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: output-zip
-          path: output.zip
-
-      # Upload logs separately for convenience
-      - name: Upload Logs Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: workflow-logs
-          path: logs/
+          name: api-workflow-output
+          path: |
+            output/
+            logs/
